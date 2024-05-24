@@ -1,0 +1,106 @@
+{
+    "name": "vscode-orfs",
+    "displayName": "vscode-orfs",
+    "description": "OpenROAD-flow-scripts plugin for Visual Studio Code",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.89.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onCommand:workbench.action.tasks.runTask"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "configuration": {
+            "title": "OpenROAD Flow scripts",
+            "properties": {
+                "openroad-flow-scripts.path": {
+                    "type": "string",
+                    "description": "Path to OpenROAD-flow-scripts directory (FLOW_HOME)"
+                },
+                "openroad-flow-scripts.design config": {
+                    "type": "string",
+                    "description": "Directory relative to workspace root to scan for config.mk file (relative to workspace root)"
+                }
+            }
+        },
+        "taskDefinitions": [
+            {
+                "type": "orfs",
+                "required": [
+                    "design",
+                    "step"
+                ],
+                "properties": {
+                    "step": {
+                        "type": "string",
+                        "description": "Step of the physical design to run"
+                    },
+                    "design": {
+                        "type": "string",
+                        "description": "Name of the design to build"
+                    }
+                }
+            }
+        ],
+        "commands": [
+            {
+                "command": "orfsTasks.item_clicked",
+                "title": "Run Task"
+            },
+            {
+                "command": "orfsTasks.item_log",
+                "title": "Show Logs"
+            },
+            {
+                "command": "orfsTasks.item_clean",
+                "title": "Clean Task Results"
+            },
+            {
+                "command": "orfsTasks.refreshEntry",
+                "title": "Refresh"
+            }
+        ],
+        "views": {
+            "explorer": [
+                {
+                    "id": "orfsTasks",
+                    "name": "OpenROAD Tasks"
+                }
+            ]
+        },
+        "menus": {
+            "view/item/context": [
+                {
+                    "when": "view == orfsTasks && (viewItem == substage || viewItem == stage)",
+                    "command": "orfsTasks.item_clicked"
+                },
+                {
+                    "when": "view == orfsTasks && (viewItem == substage)",
+                    "command": "orfsTasks.item_log"
+                },
+                {
+                    "when": "view == orfsTasks && (viewItem == stage || viewItem == design)",
+                    "command": "orfsTasks.item_clean"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.89.0",
+        "@types/node": "18.x",
+        "@typescript-eslint/eslint-plugin": "^7.7.1",
+        "@typescript-eslint/parser": "^7.7.1",
+        "eslint": "^8.57.0",
+        "typescript": "^5.4.5"
+    }
+}
