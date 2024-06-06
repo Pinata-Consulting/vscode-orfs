@@ -38,11 +38,19 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         return element;
     }
 
+    createContextView(task: vscode.Task | undefined, logTask: vscode.Task | undefined, cleanTask: vscode.Task | undefined) {
+        const tags: string[] = [];
+        if (task) tags.push("run");
+        if (logTask) tags.push("logs");
+        if (cleanTask) tags.push("clean");
+        return tags.join("_");
+    }
+
     getChildren(element?: TaskTreeItem): Thenable<TaskTreeItem[]> {
         return Promise.resolve(this.commands.then((tasks)=>{
             const items : TaskTreeItem[] = []
             if (element && element.label === `${this.orfsTaskProvider.platform}/${this.orfsTaskProvider.nickname}`) {
-                tasks.filter((el)=> el.name.match(/^[0-9]_[a-zA-Z].*/)).forEach((el)=>{
+                tasks.filter((el)=> el.name.match(/^[0-9]_[a-zA-Z].*/) && el.name !== "2_floorplan_debug_macros").forEach((el)=>{
                     const stage = el.name.split('_')[1];
                     const clean_stage = tasks.find((t) => t.name === `clean_${stage}`);
                     items.push(new TaskTreeItem(
@@ -52,7 +60,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                             el,
                             undefined,
                             clean_stage,
-                            "stage",
+                            this.createContextView(el, undefined, clean_stage),
                     ))
                 });
             } else if (element) {
@@ -66,7 +74,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                         el,
                         logTask,
                         undefined,
-                        "substage",
+                        this.createContextView(el, logTask, undefined),
                     ))
                 });
             } else {
@@ -78,7 +86,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                         undefined,
                         undefined,
                         clean_stage,
-                        "design",
+                        this.createContextView(undefined, undefined, clean_stage),
                 ))
             }
             return items.sort((a, b)=>a.label > b.label ? 1 : -1)

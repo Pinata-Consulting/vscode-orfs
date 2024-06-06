@@ -57,7 +57,7 @@
             },
             {
                 "command": "orfsTasks.item_clean",
-                "title": "Clean Task Results"
+                "title": "Clean Results"
             },
             {
                 "command": "orfsTasks.refreshEntry",
@@ -75,16 +75,19 @@
         "menus": {
             "view/item/context": [
                 {
-                    "when": "view == orfsTasks && (viewItem == substage || viewItem == stage)",
-                    "command": "orfsTasks.item_clicked"
+                    "when": "view == orfsTasks && viewItem =~ /.*run.*/",
+                    "command": "orfsTasks.item_clicked",
+                    "group": "orfs@1"
                 },
                 {
-                    "when": "view == orfsTasks && (viewItem == substage)",
-                    "command": "orfsTasks.item_log"
+                    "when": "view == orfsTasks && viewItem =~ /.*logs.*/",
+                    "command": "orfsTasks.item_log",
+                    "group": "orfs@2"
                 },
                 {
-                    "when": "view == orfsTasks && (viewItem == stage || viewItem == design)",
-                    "command": "orfsTasks.item_clean"
+                    "when": "view == orfsTasks && viewItem =~ /.*clean.*/",
+                    "command": "orfsTasks.item_clean",
+                    "group": "orfs@3"
                 }
             ]
         }

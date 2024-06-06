@@ -54,7 +54,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
             this.logchannel.appendLine(`Additionally, log printing tasks will not get generated`);
         }
         this.orfsmakefilepath = path.join(this.orfshome, 'flow');
-        if (!await fileExists(this.orfsmakefilepath)) {
+        if (!fileExists(this.orfsmakefilepath)) {
             this.logchannel.appendLine(`${this.orfsmakefilepath} does not exist. Please provide correct flow-scripts-home`);
             return false;
         }
@@ -67,7 +67,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
         const workspacedir = workspace.uri.fsPath;
         if (!workspacedir) return undefined;
         this.configMkPath = path.join(workspacedir, this.designconf ?? "", 'config.mk');
-        if (!await fileExists(this.configMkPath)) {
+        if (!fileExists(this.configMkPath)) {
             this.logchannel.appendLine(`WARNING config.mk not found, all processing will use default targets in ORFS!`);
             fullcommand = `make -C ${this.orfsmakefilepath} ${cmd}`;
         }
@@ -127,14 +127,14 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 // A flag to later possibly append a "print logs" task -
                 // this is only valid for minor steps (do-x_y_foo_bar)
                 let logflag: boolean = false;
-                if(taskname.match(/^do-[0-9]_[a-zA_Z]/))
-                    tasklaunch = taskname.split('-')[1].split("_").filter((el)=>isNaN(Number(el))).join("_");
-                else if(taskname.match(/^do-[0-9]_[0-9]/)) {
+                if (taskname === "do-2_floorplan_debug_macros") {
+                    tasklaunch = "2_floorplan_debug_macros";
+                    logflag = true;
+                } else if (taskname.match(/^do-[0-9]_[a-zA_Z]/))
+                    tasklaunch = taskname.split('-')[1].split("_").filter((el)=>isNaN(Number(el))).join("_")
+                else if (taskname.match(/^do-[0-9]_[0-9]/)) {
                     tasklaunch = taskname;
                     logflag = true;
-                }
-                else {
-                    continue;
                 }
 
                 const task = new vscode.Task(
@@ -144,7 +144,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     "orfs",
                     new vscode.ShellExecution(
                         `make -C ${this.orfsmakefilepath} ${
-                            await fileExists(this.configMkPath) ?
+                            fileExists(this.configMkPath) ?
                             "DESIGN_CONFIG=" + this.configMkPath :
                             ""
                         } ${tasklaunch}`
@@ -181,7 +181,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                         //
                         //     }
                         // )
-                        new vscode.ShellExecution(`${await fileExists(logPath) ? "code -r " + logPath : "echo Log file not found: " + logPath}`)
+                        new vscode.ShellExecution(`if [ -f '${logPath}' ]; then "code -r '${logPath}'"; else echo "Log file not found: ${logPath}"; fi`)
                     );
                     result.push(logtask)
                     logtask.group = vscode.TaskGroup.Build;
@@ -200,7 +200,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     "orfs",
                     new vscode.ShellExecution(
                         `make -C ${this.orfsmakefilepath} ${
-                            await fileExists(this.configMkPath) ?
+                            fileExists(this.configMkPath) ?
                             "DESIGN_CONFIG=" + this.configMkPath :
                             ""
                         } ${taskname}`
