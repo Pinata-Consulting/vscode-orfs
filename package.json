@@ -19,7 +19,7 @@
             "properties": {
                 "openroad-flow-scripts.path": {
                     "type": "string",
-                    "description": "Path to OpenROAD-flow-scripts directory (FLOW_HOME)"
+                    "description": "Path to OpenROAD-flow-scripts/flow directory (FLOW_HOME)"
                 },
                 "openroad-flow-scripts.design config": {
                     "type": "string",

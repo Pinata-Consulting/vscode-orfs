@@ -10,10 +10,9 @@ interface ORFSTaskDefinition extends vscode.TaskDefinition {
 export class ORFSTaskProvider implements vscode.TaskProvider {
     private logchannel: vscode.OutputChannel;
     private config: vscode.WorkspaceConfiguration;
-    private orfshome: string | undefined;
+    private flowHome: string | undefined;
     private configMkPath: string;
     private designconf: string | undefined;
-    private orfsmakefilepath: string | undefined;
     private resultPromise: Thenable<vscode.Task[]> | undefined = undefined;
     public platform: string | undefined = undefined;
     public nickname: string | undefined = undefined;
@@ -21,14 +20,14 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
     constructor(logChannel: vscode.OutputChannel) {
         this.config = vscode.workspace.getConfiguration("openroad-flow-scripts");
         this.logchannel = logChannel;
-        this.orfshome = this.config.get<string>("path");
+        this.flowHome = this.config.get<string>("path");
         this.designconf = this.config.get<string>("design config"); 
         this.configMkPath = "";
         vscode.workspace.onDidChangeConfiguration(() => {
-            const newOrfs = vscode.workspace.getConfiguration().get("openroad-flow-scripts.path")
+            const newFlowHome = vscode.workspace.getConfiguration().get("openroad-flow-scripts.path")
             const newDesignConf = vscode.workspace.getConfiguration().get("openroad-flow-scripts.design config")
-            if(this.orfshome !== newOrfs || this.designconf !== newDesignConf) {
-                this.orfshome = <string>newOrfs;
+            if(this.flowHome !== newFlowHome || this.designconf !== newDesignConf) {
+                this.flowHome = <string>newFlowHome;
                 this.designconf = <string>newDesignConf;
 
                 // The data is outdated now - setting it to undefined will ensure that the next call
@@ -40,11 +39,19 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
     }
 
     private async updateORFSMakefilePath(): Promise<boolean> {
-        this.orfshome = vscode.workspace.getConfiguration().get("openroad-flow-scripts.path");
+        this.flowHome = vscode.workspace.getConfiguration().get("openroad-flow-scripts.path");
         this.designconf = vscode.workspace.getConfiguration().get("openroad-flow-scripts.design config");
-        if (!this.orfshome) {
+        if (!this.flowHome) {
             this.logchannel.appendLine(`OpenROAD-flow-scripts directory is not provided in the configuration.`);
             this.logchannel.appendLine(`Please configure the flow-scripts-home variable to path with https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.`);
+            return false;
+        }
+        if (!fileExists(this.flowHome)) {
+            this.logchannel.appendLine(`${this.flowHome} does not exist. Please provide correct flow-scripts-home`);
+            return false;
+        }
+        if (!fileExists(path.join(this.flowHome, "Makefile"))) {
+            this.logchannel.appendLine(`${this.flowHome} does not have Makefile. Please provide correct flow-scripts-home`);
             return false;
         }
         if (!this.designconf) {
@@ -52,11 +59,6 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
             this.logchannel.appendLine(`This will search for config.mk file in workspace root`);
             this.logchannel.appendLine(`If this approach fails, all started flows will process the default ORFS target`);
             this.logchannel.appendLine(`Additionally, log printing tasks will not get generated`);
-        }
-        this.orfsmakefilepath = path.join(this.orfshome, 'flow');
-        if (!fileExists(this.orfsmakefilepath)) {
-            this.logchannel.appendLine(`${this.orfsmakefilepath} does not exist. Please provide correct flow-scripts-home`);
-            return false;
         }
         return true;
     }
@@ -69,10 +71,10 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
         this.configMkPath = path.join(workspacedir, this.designconf ?? "", 'config.mk');
         if (!fileExists(this.configMkPath)) {
             this.logchannel.appendLine(`WARNING config.mk not found, all processing will use default targets in ORFS!`);
-            fullcommand = `make -C ${this.orfsmakefilepath} ${cmd}`;
+            fullcommand = `make -C ${this.flowHome} ${cmd}`;
         }
         else {
-            fullcommand = `make -C ${this.orfsmakefilepath} DESIGN_CONFIG=${this.configMkPath} ${cmd}`;
+            fullcommand = `make -C ${this.flowHome} DESIGN_CONFIG=${this.configMkPath} ${cmd}`;
         }
 
         try {
@@ -186,7 +188,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     tasknameCustom.split("-")[1],
                     "orfs",
                     new vscode.ShellExecution(
-                        `make -C ${this.orfsmakefilepath} ${
+                        `make -C ${this.flowHome} ${
                             fileExists(this.configMkPath) ?
                             "DESIGN_CONFIG=" + this.configMkPath :
                             ""
@@ -197,7 +199,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 task.group = vscode.TaskGroup.Build;
                 if(logflag) {
                     const logPath = path.join(
-                        this.orfsmakefilepath!,
+                        this.flowHome!,
                         "logs",
                         this.platform,
                         this.nickname,
@@ -242,7 +244,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     taskname,
                     "orfs",
                     new vscode.ShellExecution(
-                        `make -C ${this.orfsmakefilepath} ${
+                        `make -C ${this.flowHome} ${
                             fileExists(this.configMkPath) ?
                             "DESIGN_CONFIG=" + this.configMkPath :
                             ""
@@ -259,7 +261,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
     public provideTasks(): Thenable<vscode.Task[]> | undefined {
         if (!this.resultPromise) {
             if (!this.updateORFSMakefilePath()) return;
-            this.logchannel.appendLine(`OpenROAD-flow-scripts path: ${this.orfshome}`);
+            this.logchannel.appendLine(`OpenROAD-flow-scripts path: ${this.flowHome}`);
             this.logchannel.show(true);
             this.resultPromise = this.getORFSMakefileTasks();
         }
