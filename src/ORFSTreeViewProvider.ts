@@ -6,6 +6,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     private commands: Promise<vscode.Task[]>;
     private _onDidChangeTreeData: vscode.EventEmitter<TaskTreeItem | undefined | null | void> = new vscode.EventEmitter<TaskTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<TaskTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    private static leafItemNames = ["2_floorplan_debug_macros", "6_report", "6_gds", "6_final"];
 
     constructor(private orfsTaskProvider: ORFSTaskProvider) {
         vscode.commands.registerCommand('orfsTasks.item_clicked', item => this.clicked(item));
@@ -49,21 +50,22 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     getChildren(element?: TaskTreeItem): Thenable<TaskTreeItem[]> {
         return Promise.resolve(this.commands.then((tasks)=>{
             const items : TaskTreeItem[] = []
-            if (element && element.label === `${this.orfsTaskProvider.platform}/${this.orfsTaskProvider.nickname}`) {
-                tasks.filter((el)=> el.name.match(/^[0-9]_[a-zA-Z].*/) && el.name !== "2_floorplan_debug_macros").forEach((el)=>{
+            if (element && element.label === `${this.orfsTaskProvider.platform}/${this.orfsTaskProvider.nickname}`) {  // stages
+                tasks.filter((el)=> el.name.match(/^[0-9]_[a-zA-Z].*/) && !TaskTreeProvider.leafItemNames.includes(el.name)).forEach((el)=>{
                     const stage = el.name.split('_')[1];
                     const clean_stage = tasks.find((t) => t.name === `clean_${stage}`);
+                    const logTask = tasks.find((t) => t.name === `log ${el.name}`);
                     items.push(new TaskTreeItem(
                             el.name,
                             vscode.workspace.name!,
-                            vscode.TreeItemCollapsibleState.Collapsed,
+                            (el.name === "1_synth") ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed,
                             el,
-                            undefined,
+                            logTask,
                             clean_stage,
-                            this.createContextView(el, undefined, clean_stage),
+                            this.createContextView(el, logTask, clean_stage),
                     ))
                 });
-            } else if (element) {
+            } else if (element) {  // leafs
                 const prefix = element.label.slice(0, 2);  // prefix like [0-9]_
                 tasks.filter((el) => el.name !== element.label && el.name.startsWith(prefix)).forEach((el)=> {
                     const logTask = tasks.find((t) => t.name.startsWith(`log ${el.name}`));
@@ -77,12 +79,12 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                         this.createContextView(el, logTask, undefined),
                     ))
                 });
-            } else {
+            } else {  // root
                 const clean_stage = tasks.find((t) => t.name === "clean_all");
                 items.push(new TaskTreeItem(
                         `${this.orfsTaskProvider.platform}/${this.orfsTaskProvider.nickname}`,
                         vscode.workspace.name!,
-                        vscode.TreeItemCollapsibleState.Collapsed,
+                        vscode.TreeItemCollapsibleState.Expanded,
                         undefined,
                         undefined,
                         clean_stage,

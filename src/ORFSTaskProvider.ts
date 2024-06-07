@@ -95,12 +95,50 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
         return undefined;
     }
 
+    private static manageCustomStages = new Map<string, {launch: string, name: string, logs: string | undefined}>([
+        ["do-synth", {
+            launch: 'synth',
+            name: 'do-1_synth',
+            logs: '1_1_yosys.log',
+        }],
+        ['do-2_floorplan_debug_macros', {
+            launch: '2_floorplan_debug_macros',
+            name: 'do-2_floorplan_debug_macros',
+            logs: '2_floorplan_debug_macros.log',
+        }],
+        ['do-6_1_fill', {
+            launch: 'do-6_1_fill do-6_1_fill.sdc',
+            name: 'do-6_1_fill',
+            logs: undefined,
+        }],
+        ['do-6_report', {
+            launch: 'do-6_report',
+            name: 'do-6_report',
+            logs: '6_report.log',
+        }],
+        ['do-final', {
+            launch: 'do-6_final.sdc',
+            name: 'do-6_final',
+            logs: undefined,
+        }],
+        ['do-gds', {
+            launch: 'do-gds',
+            name: 'do-6_gds',
+            logs: '6_1_merge.log',
+        }],
+        ['do-finish', {
+            launch: 'finish',
+            name: 'do-6_finish',
+            logs: undefined,
+        }],
+    ]);
+
     public async getORFSMakefileTasks(): Promise<vscode.Task[]> {
         const result: vscode.Task[] = [];
         if (!this.updateORFSMakefilePath()) return result;
         const workspaces = vscode.workspace.workspaceFolders;
         if (!workspaces) return result;
-        const taskcollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^(do-[0-9])'";
+        const taskcollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^(do-)'";
         const cleancollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^clean'";
         const getnickname = "print-DESIGN_NICKNAME 2>/dev/null | grep DESIGN_NICKNAME | tr ' ' '\n' | tail -n 1"
         const getplatform = "print-PLATFORM 2>/dev/null | grep PLATFORM | tr ' ' '\n' | tail -n 1"
@@ -119,6 +157,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     task: taskname,
                     cwd: workspace.uri.fsPath
                 }
+                let tasknameCustom: string = taskname;
 
                 // Filter out tasks based on granularity - major steps launch as
                 // `make foo`, while smaller as `make do-x_y_foo_bar`
@@ -127,9 +166,13 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 // A flag to later possibly append a "print logs" task -
                 // this is only valid for minor steps (do-x_y_foo_bar)
                 let logflag: boolean = false;
-                if (taskname === "do-2_floorplan_debug_macros") {
-                    tasklaunch = "2_floorplan_debug_macros";
-                    logflag = true;
+                let taskLogfile: string | undefined = undefined;
+                if (ORFSTaskProvider.manageCustomStages.has(taskname)) {
+                    const taskConfig = ORFSTaskProvider.manageCustomStages.get(taskname)!;
+                    tasknameCustom = taskConfig.name;
+                    tasklaunch = taskConfig.launch;
+                    logflag = Boolean(taskConfig.logs);
+                    taskLogfile = taskConfig.logs;
                 } else if (taskname.match(/^do-[0-9]_[a-zA_Z]/))
                     tasklaunch = taskname.split('-')[1].split("_").filter((el)=>isNaN(Number(el))).join("_")
                 else if (taskname.match(/^do-[0-9]_[0-9]/)) {
@@ -140,7 +183,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 const task = new vscode.Task(
                     definition,
                     workspace,
-                    taskname.split("-")[1],
+                    tasknameCustom.split("-")[1],
                     "orfs",
                     new vscode.ShellExecution(
                         `make -C ${this.orfsmakefilepath} ${
@@ -159,7 +202,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                         this.platform,
                         this.nickname,
                         "base",
-                        taskname.split("-")[1] + ".log"
+                        (taskLogfile ?? taskname.split("-")[1] + ".log")
                     )
                     const logefinition: ORFSTaskDefinition = {
                         type: 'orfs',
@@ -169,7 +212,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     const logtask = new vscode.Task(
                         logefinition,
                         workspace,
-                        "log " + taskname.split("-")[1],
+                        "log " + tasknameCustom.split("-")[1],
                         "orfs",
                         // TODO (jbylicki): `code -r` is a temporary workaround around running a Task that opens an editor with log files
                         // new vscode.CustomExecution(
@@ -181,7 +224,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                         //
                         //     }
                         // )
-                        new vscode.ShellExecution(`if [ -f '${logPath}' ]; then "code -r '${logPath}'"; else echo "Log file not found: ${logPath}"; fi`)
+                        new vscode.ShellExecution(`if [ -f '${logPath}' ]; then code -r '${logPath}'; else echo "Log file not found: ${logPath}"; fi`)
                     );
                     result.push(logtask)
                     logtask.group = vscode.TaskGroup.Build;
