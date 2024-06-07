@@ -12,6 +12,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         vscode.commands.registerCommand('orfsTasks.item_clicked', item => this.clicked(item));
         vscode.commands.registerCommand('orfsTasks.item_log', item => this.showLog(item));
         vscode.commands.registerCommand('orfsTasks.item_clean', item => this.runClean(item));
+        vscode.commands.registerCommand('orfsTasks.item_gui', item => this.runGUI(item));
         this.commands = Promise.resolve(this.orfsTaskProvider.provideTasks()!.then((tasklist)=>{
             return tasklist;
         }))
@@ -25,13 +26,16 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
     }
 
     public clicked(item: TaskTreeItem) {
-      return item.run()
+      return item.run();
     }
     public showLog(item: TaskTreeItem) {
-      return item.showLogs()
+      return item.showLogs();
     }
     public runClean(item: TaskTreeItem) {
-      return item.runClean()
+      return item.runClean();
+    }
+    public runGUI(item: TaskTreeItem) {
+      return item.runGUI();
     }
 
     getTreeItem(element: TaskTreeItem): vscode.TreeItem {
@@ -39,11 +43,12 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
         return element;
     }
 
-    createContextView(task: vscode.Task | undefined, logTask: vscode.Task | undefined, cleanTask: vscode.Task | undefined) {
+    createContextView(task: vscode.Task | undefined, logTask: vscode.Task | undefined, cleanTask: vscode.Task | undefined, guiTask: vscode.Task | undefined) {
         const tags: string[] = [];
         if (task) tags.push("run");
         if (logTask) tags.push("logs");
         if (cleanTask) tags.push("clean");
+        if (guiTask) tags.push("gui");
         return tags.join("_");
     }
 
@@ -55,28 +60,32 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                     const stage = el.name.split('_')[1];
                     const clean_stage = tasks.find((t) => t.name === `clean_${stage}`);
                     const logTask = tasks.find((t) => t.name === `log ${el.name}`);
+                    const guiTask = tasks.find((t) => t.name === `gui_${stage}`);
                     items.push(new TaskTreeItem(
                             el.name,
                             vscode.workspace.name!,
                             (el.name === "1_synth") ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed,
                             el,
                             logTask,
+                            guiTask,
                             clean_stage,
-                            this.createContextView(el, logTask, clean_stage),
+                            this.createContextView(el, logTask, clean_stage, guiTask),
                     ))
                 });
             } else if (element) {  // leafs
                 const prefix = element.label.slice(0, 2);  // prefix like [0-9]_
                 tasks.filter((el) => el.name !== element.label && el.name.startsWith(prefix)).forEach((el)=> {
                     const logTask = tasks.find((t) => t.name.startsWith(`log ${el.name}`));
+                    const guiTask = tasks.find((t) => t.name.startsWith(`gui_${el.name}`));
                     items.push(new TaskTreeItem(
                         el.name,
                         vscode.workspace.name!,
                         vscode.TreeItemCollapsibleState.None,
                         el,
                         logTask,
+                        guiTask,
                         undefined,
-                        this.createContextView(el, logTask, undefined),
+                        this.createContextView(el, logTask, undefined, guiTask),
                     ))
                 });
             } else {  // root
@@ -87,8 +96,9 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskTreeItem> {
                         vscode.TreeItemCollapsibleState.Expanded,
                         undefined,
                         undefined,
+                        undefined,
                         clean_stage,
-                        this.createContextView(undefined, undefined, clean_stage),
+                        this.createContextView(undefined, undefined, clean_stage, undefined),
                 ))
             }
             return items.sort((a, b)=>a.label > b.label ? 1 : -1)
@@ -103,6 +113,7 @@ class TaskTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         private task: vscode.Task | undefined,
         private logTask: vscode.Task | undefined,
+        private guiTask: vscode.Task | undefined,
         private cleanTask: vscode.Task | undefined,
         context: string | undefined,
     ) {
@@ -124,6 +135,11 @@ class TaskTreeItem extends vscode.TreeItem {
     public runClean() {
         if(this.cleanTask)
             return vscode.tasks.executeTask(this.cleanTask)
+        return undefined
+    }
+    public runGUI() {
+        if(this.guiTask)
+            return vscode.tasks.executeTask(this.guiTask)
         return undefined
     }
 

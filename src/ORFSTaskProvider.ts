@@ -133,6 +133,11 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
             name: 'do-6_finish',
             logs: undefined,
         }],
+        ['gui_final', {
+            launch: 'gui_final',
+            name: 'gui_finish',
+            logs: undefined,
+        }],
     ]);
 
     public async getORFSMakefileTasks(): Promise<vscode.Task[]> {
@@ -141,11 +146,13 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
         const workspaces = vscode.workspace.workspaceFolders;
         if (!workspaces) return result;
         const taskcollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^(do-)'";
+        const guicollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^(gui_)'";
         const cleancollect = "-np | grep -E '^[a-zA-Z0-9_-]+:.*?($|:| )' | cut -d ':' -f 1 | sort | uniq | grep -E '^clean'";
         const getnickname = "print-DESIGN_NICKNAME 2>/dev/null | grep DESIGN_NICKNAME | tr ' ' '\n' | tail -n 1"
         const getplatform = "print-PLATFORM 2>/dev/null | grep PLATFORM | tr ' ' '\n' | tail -n 1"
         for (const workspace of workspaces) {
             const tasksstring = await this.runMakeCommandForWorkspace(taskcollect, workspace);
+            const guistring = await this.runMakeCommandForWorkspace(guicollect, workspace);
             const cleanstring = await this.runMakeCommandForWorkspace(cleancollect, workspace);
             this.platform = (await this.runMakeCommandForWorkspace(getplatform, workspace))!.trim();
             this.nickname = (await this.runMakeCommandForWorkspace(getnickname, workspace))!.trim();
@@ -180,6 +187,9 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 else if (taskname.match(/^do-[0-9]_[0-9]/)) {
                     tasklaunch = taskname;
                     logflag = true;
+                }
+                else {
+                    continue;
                 }
 
                 const task = new vscode.Task(
@@ -232,7 +242,14 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     logtask.group = vscode.TaskGroup.Build;
                 }
             }
-            for (const taskname of cleanstring ? cleanstring.split("\n") : []) {
+            for (let taskname of ((cleanstring ? cleanstring.split("\n") : []).concat(guistring ? guistring.split("\n") : []))) {
+                this.logchannel.appendLine(`Adding task:  ${taskname}`);
+                let launch: string | undefined = undefined;
+                if (ORFSTaskProvider.manageCustomStages.has(taskname)) {
+                    const config = ORFSTaskProvider.manageCustomStages.get(taskname)!;
+                    taskname = config.name;
+                    launch = config.launch;
+                }
                 const definition: ORFSTaskDefinition = {
                     type: 'orfs',
                     task: taskname,
@@ -248,7 +265,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                             fileExists(this.configMkPath) ?
                             "DESIGN_CONFIG=" + this.configMkPath :
                             ""
-                        } ${taskname}`
+                        } ${launch ?? taskname}`
                     )
                 );
                 result.push(task);

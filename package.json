@@ -60,6 +60,10 @@
                 "title": "Clean Results"
             },
             {
+                "command": "orfsTasks.item_gui",
+                "title": "Run OpenROAD GUI"
+            },
+            {
                 "command": "orfsTasks.refreshEntry",
                 "title": "Refresh"
             }
@@ -78,6 +82,11 @@
                     "when": "view == orfsTasks && viewItem =~ /.*run.*/",
                     "command": "orfsTasks.item_clicked",
                     "group": "orfs@1"
+                },
+                {
+                    "when": "view == orfsTasks && viewItem =~ /.*gui.*/",
+                    "command": "orfsTasks.item_gui",
+                    "group": "orfs@2"
                 },
                 {
                     "when": "view == orfsTasks && viewItem =~ /.*logs.*/",
