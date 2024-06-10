@@ -54,3 +54,44 @@ The list of tasks allows to:
 
 Additionally, each task can be launched from the task list.
 To access it, use the Command Palette (`Ctrl-Shift-P`), then select the option `Tasks: Run Task`, then `orfs`, and finally the task you wish to run.
+
+## Using extension with Developer container and ORFS Docker image
+
+To use the extension with the `ghcr.io/antmicro/openroad-flow-scripts/ubuntu22.04` OpenROAD developer image, you can use [Visual Studio Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers).
+To do so, follow the below steps:
+
+* Install [Dev Containers extension in VSCode](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+* Provide the following `.devcontainer/devcontainer.json` file in your project (options provided in `runArgs` are necessary for OpenROAD GUI, also requires e.g. `xhost +local:` to allow running GUI from the container):
+  ```json
+  {
+      "name": "orfs-tinyRocket",
+      "image": "ghcr.io/antmicro/openroad-flow-scripts/ubuntu22.04",
+      "runArgs": [
+          "-e", "DISPLAY",
+          "-e", "XAUTHORITY",
+          "-e", "XDG_RUNTIME_DIR",
+          "-v", "/tmp/.X11-unix/:/tmp/.X11-unix/"
+      ]
+  }
+  ```
+* Allow VSCode to set up the development container
+* Follow steps from [Building and running the extension](building-and-running-the-extension) to install the plugin for the Dev Container
+* In the extension settings, set `OpenROAD-flow-scripts: Path` to `/OpenROAD-flow-scripts/flow`, which is a path inside a container to OpenROAD-flow-scripts tools.
+
+You can also provide the direct path to the `vscode-orfs.vsix` extension in the `devcontainer.json` file. Once built, you can provide it as follows (assuming it is placed in `/plugins/vscode-orfs.vsix`):
+
+```json
+{
+    ...
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "/plugins/vscode-orfs.vsix"
+            ]
+        }
+    },
+    ...
+}
+```
+
+From this point, you should be able to use OpenROAD tools present in the container.
