@@ -10,7 +10,7 @@ interface ORFSTaskDefinition extends vscode.TaskDefinition {
 export class ORFSTaskProvider implements vscode.TaskProvider {
     private logchannel: vscode.OutputChannel;
     private config: vscode.WorkspaceConfiguration;
-    private flowHome: string | undefined;
+    public flowHome: string | undefined;
     private configMkPath: string;
     private designconf: string | undefined;
     private resultPromise: Thenable<vscode.Task[]> | undefined = undefined;

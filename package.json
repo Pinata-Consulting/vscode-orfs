@@ -70,6 +70,10 @@
             {
                 "command": "orfsTasks.refreshEntry",
                 "title": "Refresh"
+            },
+            {
+                "command": "orfsTasks.clearHighlights",
+                "title": "Clear Highlights"
             }
         ],
         "views": {
