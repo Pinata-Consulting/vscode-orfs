@@ -20,8 +20,8 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
     constructor(logChannel: vscode.OutputChannel) {
         this.config = vscode.workspace.getConfiguration("openroad-flow-scripts");
         this.logchannel = logChannel;
-        this.flowHome = this.config.get<string>("path");
-        this.designconf = this.config.get<string>("design config"); 
+        this.flowHome = this.config.get<string>("openroad-flow-scripts.path");
+        this.designconf = this.config.get<string>("openroad-flow-scripts.design config");
         this.configMkPath = "";
         vscode.workspace.onDidChangeConfiguration(() => {
             const newFlowHome = vscode.workspace.getConfiguration().get("openroad-flow-scripts.path")
@@ -183,7 +183,7 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                     logflag = Boolean(taskConfig.logs);
                     taskLogfile = taskConfig.logs;
                 } else if (taskname.match(/^do-[0-9]_[a-zA_Z]/))
-                    tasklaunch = taskname.split('-')[1].split("_").filter((el)=>isNaN(Number(el))).join("_")
+                    tasklaunch = taskname.split('-')[1].split("_").filter((el)=>isNaN(Number(el))).join("_");
                 else if (taskname.match(/^do-[0-9]_[0-9]/)) {
                     tasklaunch = taskname;
                     logflag = true;
@@ -243,7 +243,6 @@ export class ORFSTaskProvider implements vscode.TaskProvider {
                 }
             }
             for (let taskname of ((cleanstring ? cleanstring.split("\n") : []).concat(guistring ? guistring.split("\n") : []))) {
-                this.logchannel.appendLine(`Adding task:  ${taskname}`);
                 let launch: string | undefined = undefined;
                 if (ORFSTaskProvider.manageCustomStages.has(taskname)) {
                     const config = ORFSTaskProvider.manageCustomStages.get(taskname)!;
